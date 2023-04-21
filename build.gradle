@@ -13,6 +13,7 @@ buildscript {
     classpath libs.dokkaPlugin
     classpath libs.spotlessPlugin
     classpath libs.buildConfigPlugin
+    classpath libs.dependencySortPlugin
     classpath libs.zipline.gradlePlugin
     classpath libs.paparazzi.gradlePlugin
     classpath 'app.cash.redwood.build:gradle-plugin'
@@ -219,4 +220,6 @@ allprojects {
       licenseHeaderFile(rootProject.file('gradle/license-header.txt'))
     }
   }
+
+  apply plugin: 'com.squareup.sort-dependencies'
 }
