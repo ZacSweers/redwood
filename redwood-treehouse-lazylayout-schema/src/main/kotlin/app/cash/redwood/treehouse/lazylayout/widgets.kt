@@ -23,7 +23,9 @@ import app.cash.redwood.schema.Widget
 @Widget(1)
 public data class LazyList(
   @Property(1) val isVertical: Boolean,
-  @Property(2) val onPositionDisplayed: (position: Int) -> Unit,
+  // TODO: switch to multiple arguments when that's supported.
+  //     https://github.com/cashapp/redwood/issues/1056
+  @Property(2) val onViewportChanged: (range: IntArray) -> Unit,
   @Property(3) @Default("0") val itemsBefore: Int = 0,
   @Property(4) @Default("0") val itemsAfter: Int = 0,
   @Children(1) val items: () -> Unit,

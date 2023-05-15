@@ -33,47 +33,30 @@ import kotlinx.coroutines.cancel
 internal class Items<VH : RecyclerView.ViewHolder>(
   private val adapter: RecyclerView.Adapter<VH>,
 ) : Widget.Children<View> {
+  val size: Int
+    get() = widgets.size
+
+  internal var itemsBefore = 0
+  internal var itemsAfter = 0
+
   private val _widgets = MutableListChildren<View>()
   val widgets: List<Widget<View>> get() = _widgets
 
-  var guestItemsBefore = 0
-  var guestItemsAfter = 0
-
-  var hostItemsBefore = 0
-  var hostItemsAfter = 0
-
   override fun insert(index: Int, widget: Widget<View>) {
     _widgets.insert(index, widget)
-
-    if (index == 0 && hostItemsBefore > guestItemsBefore) {
-      hostItemsBefore-- // An item went from virtual to real.
-    } else if (index == _widgets.size - 1 && hostItemsAfter > guestItemsAfter) {
-      hostItemsAfter-- // An item went from virtual to real.
-    } else {
-      adapter.notifyItemInserted(index)
-    }
+    adapter.notifyItemInserted(itemsBefore + index)
   }
 
   override fun move(fromIndex: Int, toIndex: Int, count: Int) {
     _widgets.move(fromIndex, toIndex, count)
     check(count == 1)
-    adapter.notifyItemMoved(fromIndex, toIndex) // TODO Support arbitrary count.
+    // TODO Support arbitrary count.
+    adapter.notifyItemMoved(itemsBefore + fromIndex, itemsBefore + toIndex)
   }
 
   override fun remove(index: Int, count: Int) {
-    for ( i in 0 until count) { remove(index) }
-  }
-
-  private fun remove(index: Int) {
-    _widgets.removeAt(index)
-
-    if (index == 0 && hostItemsBefore < guestItemsBefore) {
-      hostItemsBefore++ // An item went from real to virtual.
-    } else if (index == _widgets.size && hostItemsAfter < guestItemsAfter) {
-      hostItemsAfter++ // An item went from real to virtual.
-    } else {
-      adapter.notifyItemRangeRemoved(index, 1)
-    }
+    _widgets.remove(index, count)
+    adapter.notifyItemRangeRemoved(itemsBefore + index, count)
   }
 
   override fun onLayoutModifierUpdated() {
@@ -89,6 +72,8 @@ internal class ViewLazyList(
 
   private val linearLayoutManager = LinearLayoutManager(value.context)
   private val adapter = LazyContentItemListAdapter()
+  private var onViewportChanged: ((IntArray) -> Unit)? = null
+  private var viewport = 0 until 0
 
   override val items = Items(adapter)
 
@@ -109,30 +94,62 @@ internal class ViewLazyList(
         }
       },
     )
+    value.addOnScrollListener(
+      object : RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+          updateViewport()
+        }
+
+        override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+          updateViewport()
+        }
+      },
+    )
   }
 
   override fun isVertical(isVertical: Boolean) {
     linearLayoutManager.orientation = if (isVertical) RecyclerView.VERTICAL else RecyclerView.HORIZONTAL
   }
 
-  override fun onPositionDisplayed(onPositionDisplayed: (Int) -> Unit) {
-    adapter.onPositionDisplayed = onPositionDisplayed
+  override fun onViewportChanged(onViewportChanged: (IntArray) -> Unit) {
+    this.onViewportChanged = onViewportChanged
+  }
+
+  private fun updateViewport() {
+    val newViewport = linearLayoutManager.findFirstVisibleItemPosition()..linearLayoutManager.findLastVisibleItemPosition()
+    if (newViewport != viewport) {
+      this@ViewLazyList.viewport = newViewport
+      onViewportChanged?.invoke(intArrayOf(newViewport.first, newViewport.last + 1))
+    }
   }
 
   override fun itemsBefore(itemsBefore: Int) {
-    items.guestItemsBefore = itemsBefore
+    val delta = itemsBefore - items.itemsBefore
+    items.itemsBefore = itemsBefore
+
+    if (delta > 0) {
+      adapter.notifyItemRangeInserted(itemsBefore - delta, delta)
+    } else {
+      adapter.notifyItemRangeRemoved(itemsBefore, -delta)
+    }
   }
 
   override fun itemsAfter(itemsAfter: Int) {
-    items.guestItemsAfter = itemsAfter
+    val delta = itemsAfter - items.itemsAfter
+    items.itemsAfter = itemsAfter
+
+    val positionStart = items.itemsBefore + items.size
+    if (delta > 0) {
+      adapter.notifyItemRangeInserted(positionStart, delta)
+    } else {
+      adapter.notifyItemRangeRemoved(positionStart, -delta)
+    }
   }
 
   private class LazyContentItemListAdapter : RecyclerView.Adapter<ViewHolder>() {
-    var onPositionDisplayed: ((Int) -> Unit)? = null
-
     lateinit var items: Items<ViewHolder>
 
-    override fun getItemCount(): Int = items.widgets.size + items.guestItemsBefore + items.guestItemsAfter
+    override fun getItemCount(): Int = items.itemsBefore + items.widgets.size + items.itemsAfter
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
       FrameLayout(parent.context).apply {
@@ -141,8 +158,7 @@ internal class ViewLazyList(
     )
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-      onPositionDisplayed!!.invoke(position)
-      val index = position - items.guestItemsBefore
+      val index = position - items.itemsBefore
       val view = if (index !in items.widgets.indices) {
         TextView(holder.itemView.context).apply {
           text = "Placeholder"
