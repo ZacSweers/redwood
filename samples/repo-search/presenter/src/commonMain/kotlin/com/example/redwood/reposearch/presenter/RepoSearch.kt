@@ -16,9 +16,11 @@
 package com.example.redwood.reposearch.presenter
 
 import androidx.compose.runtime.Composable
+import app.cash.redwood.LayoutModifier
 import app.cash.redwood.layout.api.Margin
 import app.cash.redwood.layout.api.dp
 import app.cash.redwood.layout.compose.Column
+import app.cash.redwood.layout.compose.Row
 import com.example.redwood.reposearch.compose.Text
 
 // TODO Switch to https://github.com/cashapp/zipline/issues/490 once available.
@@ -30,7 +32,13 @@ fun interface HttpClient {
 fun RepoSearch(
   repository: Repository,
 ) {
-  Column(margin = Margin(16.dp)) {
-    Text(text = repository.fullName)
+  Column(margin = Margin(4.dp)) {
+    Row {
+      Text(layoutModifier = LayoutModifier.margin(Margin(end = 16.dp)), text = repository.fullName)
+      Text(layoutModifier = LayoutModifier.margin(Margin(end = 16.dp)), text = repository.fullName)
+      Text(layoutModifier = LayoutModifier.margin(Margin(end = 16.dp)), text = repository.fullName)
+      Text(layoutModifier = LayoutModifier.margin(Margin(end = 16.dp)), text = repository.fullName)
+      Text(layoutModifier = LayoutModifier.margin(Margin(end = 16.dp)), text = repository.fullName)
+    }
   }
 }

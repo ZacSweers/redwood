@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Square, Inc.
+ * Copyright (C) 2023 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package app.cash.redwood.treehouse.lazylayout
 
 import app.cash.redwood.schema.Children
+import app.cash.redwood.schema.Default
 import app.cash.redwood.schema.Property
 import app.cash.redwood.schema.Widget
 
@@ -23,5 +24,7 @@ import app.cash.redwood.schema.Widget
 public data class LazyList(
   @Property(1) val isVertical: Boolean,
   @Property(2) val onPositionDisplayed: (position: Int) -> Unit,
+  @Property(3) @Default("0") val itemsBefore: Int = 0,
+  @Property(4) @Default("0") val itemsAfter: Int = 0,
   @Children(1) val items: () -> Unit,
 )
